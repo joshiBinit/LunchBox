@@ -11,7 +11,7 @@ import { GroupDetailsModal } from "../modals/GroupDetailsModal";
 import { getMyGroups } from "../../api/groupApi";
 
 export const Dashboard: React.FC = () => {
-  const { user } = useAuth();
+  useAuth();
   const token = localStorage.getItem("lunchTracker_token"); // or extend your AuthContext to expose token
   const [groups, setGroups] = useState<any[]>([]);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
