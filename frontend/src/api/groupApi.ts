@@ -1,5 +1,5 @@
 const BACKEND_URL =
-  process.env.REACT_APP_BACKEND_URL || "http://localhost:5000/";
+  import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/";
 
 export const createGroup = async (groupName: string, token: string) => {
   const response = await fetch(`${BACKEND_URL}api/groups/create`, {
