@@ -1,5 +1,8 @@
+const BACKEND_URL =
+  process.env.REACT_APP_BACKEND_URL || "http://localhost:5000/";
+
 export const createGroup = async (groupName: string, token: string) => {
-  const response = await fetch("http://localhost:5000/api/groups/create", {
+  const response = await fetch(`${BACKEND_URL}api/groups/create`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -18,7 +21,7 @@ export const createGroup = async (groupName: string, token: string) => {
 
 export const getMyGroups = async (token: string) => {
   try {
-    const response = await fetch("http://localhost:5000/api/groups/my-groups", {
+    const response = await fetch(`${BACKEND_URL}api/groups/my-groups`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
