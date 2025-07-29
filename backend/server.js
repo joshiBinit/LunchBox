@@ -1,32 +1,30 @@
+require("dotenv").config();
 const express = require("express");
-const dotenv = require("dotenv");
 const cors = require("cors");
-const connectDB = require("./config/db"); // use require, no .js extension
-
-const allowedOrigins = [
-  "http://localhost:5000", // Vite dev
-  "https://lunch-box-frontend-vert.vercel.app", // Deployed frontend
-];
-
-// Use require for routes as well:
-const groupRoutes = require("./routes/group");
+const connectDB = require("./config/db");
+const groupRoutes = require("./routes/groups");
+const expenseRoutes = require("./routes/expenses");
+const errorHandler = require("./middleware/errorHandler");
 const authRoutes = require("./routes/auth");
-
-dotenv.config();
+const app = express();
+const authMiddleware = require("./middleware/authMiddleware");
+// Connect to MongoDB
 connectDB();
 
-const app = express();
-
-app.use(
-  cors({
-    origin: allowedOrigins,
-    credentials: true,
-  })
-);
+// Middleware
+app.use(cors());
 app.use(express.json());
 
-app.use("/api/auth", authRoutes);
-app.use("/api/groups", groupRoutes);
+// Routes
+app.use("/api/groups", authMiddleware, groupRoutes);
 
+// Expense routes nested under groups
+app.use("/api/groups/:groupId/expenses", authMiddleware, expenseRoutes);
+app.use("/api/auth", authRoutes);
+
+// Error handling middleware (optional)
+app.use(errorHandler);
+
+// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

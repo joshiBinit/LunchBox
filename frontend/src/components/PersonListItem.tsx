@@ -1,8 +1,7 @@
 import React from "react";
+import type { PersonListItemType } from "../types";
 
-interface PersonListItemProps {
-  name: string;
-  amount: number;
+interface PersonListItemProps extends PersonListItemType {
   type: "receivable" | "payable";
 }
 

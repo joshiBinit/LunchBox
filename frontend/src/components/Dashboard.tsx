@@ -76,7 +76,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {groups.map((group) => (
             <Card
-              key={group.id}
+              key={group._id}
               className="relative hover:shadow-xl transition-shadow p-0 group/card"
             >
               <div
@@ -92,7 +92,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       Total Spent
                     </span>
                     <span className="font-semibold text-purple-500">
-                      Rs. {group.summary?.totalCost.toFixed(2)}
+                      Rs. {group.summary?.totalCost?.toFixed(2) ?? "0.00"}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
@@ -100,7 +100,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       You are owed
                     </span>
                     <span className="font-semibold text-green-500">
-                      Rs. {group.summary?.receivable.toFixed(2)}
+                      Rs. {group.summary?.receivable?.toFixed(2) ?? "0.00"}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
@@ -108,7 +108,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       You owe
                     </span>
                     <span className="font-semibold text-red-500">
-                      Rs. {group.summary?.payable.toFixed(2)}
+                      Rs. {group.summary?.payable?.toFixed(2) ?? "0.00"}
                     </span>
                   </div>
                 </div>

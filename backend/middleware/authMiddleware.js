@@ -1,29 +1,21 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
 
-const authMiddleware = async (req, res, next) => {
-  const token = req.header("Authorization")?.split(" ")[1];
-  if (!token) {
-    console.log("No token found in request");
-    return res.status(401).json({ message: "No token, access denied" });
-  }
+const authMiddleware = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer "))
+    return res
+      .status(401)
+      .json({ message: "Authorization token missing or invalid" });
+
+  const token = authHeader.split(" ")[1];
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("Decoded token:", decoded);
-
-    const user = await User.findById(decoded.id).select("-password");
-    console.log("User fetched from DB:", user);
-    if (!user) {
-      console.log("User not found for id:", decoded.id);
-      return res.status(401).json({ message: "User not found" });
-    }
-
-    req.user = user;
+    req.user = decoded; // add user info to request
     next();
   } catch (err) {
-    console.log("Token verification error:", err.message);
-    res.status(401).json({ message: "Token is not valid" });
+    res.status(401).json({ message: "Invalid or expired token" });
   }
 };
 

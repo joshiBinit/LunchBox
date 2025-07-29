@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from "react";
-import type { Group, Expense } from "./types";
+import React, { useState, useEffect, useMemo } from "react";
+import type { Group, Expense, UserRef } from "./types";
 import { Dashboard } from "./components/Dashboard";
 import { GroupView } from "./components/GroupView";
 import { AddExpenseModal } from "./components/AddExpenseModal";
@@ -8,77 +8,21 @@ import { Card } from "./components/Card";
 import { Plus, X } from "lucide-react";
 import { calculateAllBalances } from "./utils";
 import { LoginPage } from "./components/LoginPage";
+import { SignUpPage } from "./components/SignUpPage";
+import {
+  login as apiLogin,
+  signup as apiSignup,
+  fetchGroups,
+  createGroup as apiCreateGroup,
+  deleteGroup as apiDeleteGroup,
+  addMember as apiAddMember,
+  addExpense as apiAddExpense,
+  editExpense as apiEditExpense,
+  fetchGroupById,
+  setAuthToken,
+} from "./api";
 
-// Initial mock groups data
-const initialGroups: Group[] = [
-  {
-    id: 1,
-    name: "Engineering Team",
-    admin: "You",
-    members: ["You", "Alice", "Bob", "Eve", "Grace", "Henry"],
-    expenses: [
-      {
-        id: 1,
-        date: "2025-07-28",
-        restaurant: "Pizza Heaven",
-        payer: "You",
-        items: [
-          {
-            id: 101,
-            name: "Chicken Pizza",
-            cost: 1200.0,
-            sharedBy: ["You", "Alice", "Bob"],
-          },
-          {
-            id: 102,
-            name: "Momo Platter",
-            cost: 800.0,
-            sharedBy: ["You", "Eve"],
-          },
-        ],
-        totalCost: 2000.0,
-      },
-      {
-        id: 2,
-        date: "2025-07-27",
-        restaurant: "Sushi Central",
-        payer: "Alice",
-        items: [
-          {
-            id: 201,
-            name: "Sushi Set",
-            cost: 5500.0,
-            sharedBy: ["You", "Eve", "Alice"],
-          },
-        ],
-        totalCost: 5500.0,
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: "Marketing Crew",
-    admin: "You",
-    members: ["You", "Charlie", "Frank"],
-    expenses: [
-      {
-        id: 3,
-        date: "2025-07-26",
-        restaurant: "Taco Town",
-        payer: "Charlie",
-        items: [
-          {
-            id: 301,
-            name: "Tacos",
-            cost: 2550.0,
-            sharedBy: ["You", "Charlie"],
-          },
-        ],
-        totalCost: 2550.0,
-      },
-    ],
-  },
-];
+type User = { username: string; token: string };
 
 const CreateGroupModal: React.FC<{
   onClose: () => void;
@@ -122,12 +66,19 @@ const CreateGroupModal: React.FC<{
 };
 
 export default function App() {
-  // Track logged-in username or null when logged out
-  const [user, setUser] = useState<string | null>(null);
+  // Auth and UI state
+  const [user, setUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem("user");
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [showSignUp, setShowSignUp] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Data and view states
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
   const [view, setView] = useState<"dashboard" | "group">("dashboard");
   const [activeGroup, setActiveGroup] = useState<Group | null>(null);
-  const [groups, setGroups] = useState<Group[]>(initialGroups);
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [expenseModalState, setExpenseModalState] = useState<{
     isOpen: boolean;
@@ -137,152 +88,329 @@ export default function App() {
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
     group: Group | null;
-  }>({
-    isOpen: false,
-    group: null,
-  });
+  }>({ isOpen: false, group: null });
 
-  const { processedGroups, overallSummary } = useMemo(
-    () => calculateAllBalances(groups),
-    [groups]
-  );
+  // Set auth token and load groups on user change
+  useEffect(() => {
+    if (user?.token) {
+      setAuthToken(user.token);
+      localStorage.setItem("user", JSON.stringify(user));
+      loadGroups();
+    } else {
+      setAuthToken(null);
+      localStorage.removeItem("user");
+      setGroups([]);
+      setActiveGroup(null);
+      setView("dashboard");
+    }
+  }, [user]);
 
-  const handleGroupSelect = (group: Group) => {
-    const selectedGroup =
-      processedGroups.find((g) => g.id === group.id) || null;
-    setActiveGroup(selectedGroup);
-    setView("group");
-  };
-
-  const handleCreateGroup = (groupName: string) => {
-    const newGroup: Group = {
-      id: Date.now(),
-      name: groupName,
-      admin: "You",
-      members: ["You"],
-      expenses: [],
-    };
-    setGroups([newGroup, ...groups]);
-    setIsCreatingGroup(false);
-  };
-
-  const handleUpdateGroup = (updatedGroup: Group) => {
-    const newGroups = groups.map((g) =>
-      g.id === updatedGroup.id ? updatedGroup : g
-    );
-    setGroups(newGroups);
-    const newActiveGroup =
-      calculateAllBalances(newGroups).processedGroups.find(
-        (g) => g.id === updatedGroup.id
-      ) || null;
-    if (activeGroup && activeGroup.id === updatedGroup.id) {
-      setActiveGroup(newActiveGroup);
+  // Load groups from backend
+  const loadGroups = async () => {
+    setLoadingGroups(true);
+    setError(null);
+    try {
+      const groupsData = await fetchGroups();
+      setGroups(groupsData);
+      setActiveGroup(null);
+      setView("dashboard");
+    } catch (err) {
+      setError((err as Error).message || "Failed to load groups");
+    } finally {
+      setLoadingGroups(false);
     }
   };
 
-  const handleAddMemberToGroup = (memberName: string) => {
+  // Load full group details including expenses, then calculate balances
+  const loadGroupById = async (groupId: string) => {
+    setLoadingGroups(true);
+    setError(null);
+    try {
+      if (!user) throw new Error("User is not logged in");
+
+      const groupData = await fetchGroupById(groupId);
+      const { processedGroups } = calculateAllBalances(
+        [groupData],
+        user.username
+      );
+      setActiveGroup(processedGroups[0]);
+      setView("group");
+    } catch (err) {
+      setError((err as Error).message || "Failed to load group");
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
+
+  // Login handler
+  const handleLogin = async (username: string, password: string) => {
+    setError(null);
+    try {
+      const data = await apiLogin(username, password);
+      setUser({ username: data.user.username, token: data.token });
+    } catch (err) {
+      setError((err as Error).message || "Login failed");
+      throw err;
+    }
+  };
+
+  // Signup handler
+  const handleSignUp = async (
+    username: string,
+    email: string,
+    password: string
+  ) => {
+    setError(null);
+    try {
+      await apiSignup(username, email, password);
+      setShowSignUp(false);
+    } catch (err) {
+      setError((err as Error).message || "Signup failed");
+      throw err;
+    }
+  };
+
+  // Logout handler
+  const handleLogout = () => {
+    setUser(null);
+    setError(null);
+  };
+
+  // Handle group selection: load group data and balances
+  const handleGroupSelect = (group: Group) => {
+    loadGroupById(group._id);
+  };
+
+  // Create new group handler
+  const handleCreateGroup = async (groupName: string) => {
+    try {
+      if (!user) throw new Error("Unauthorized");
+      const newGroup = await apiCreateGroup(groupName, user.username);
+      setGroups([newGroup, ...groups]);
+      setIsCreatingGroup(false);
+    } catch (err) {
+      setError((err as Error).message || "Failed to create group");
+    }
+  };
+
+  // Update group in local state and activeGroup state if relevant
+  const updateGroupLocally = (updatedGroup: Group) => {
+    setGroups((prev) =>
+      prev.map((g) => (g._id === updatedGroup._id ? updatedGroup : g))
+    );
+    if (activeGroup?._id === updatedGroup._id) {
+      setActiveGroup(updatedGroup);
+    }
+  };
+
+  // Add member to the group
+  const handleAddMemberToGroup = async (memberName: string) => {
     if (!activeGroup) return;
-    if (activeGroup.members.includes(memberName)) {
-      console.log("Member already exists");
+
+    if (
+      activeGroup.members.some(
+        (m: UserRef) => (typeof m === "string" ? m : m.username) === memberName
+      )
+    ) {
+      setError("Member already exists");
       return;
     }
-    const updatedGroup = {
-      ...activeGroup,
-      members: [...activeGroup.members, memberName],
-    };
-    handleUpdateGroup(updatedGroup);
+    try {
+      await apiAddMember(activeGroup._id!, memberName);
+      const updatedGroup = {
+        ...activeGroup,
+        members: [...activeGroup.members, memberName],
+      };
+      updateGroupLocally(updatedGroup);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message || "Failed to add member");
+    }
   };
 
-  const openNewExpenseModal = (group: Group) =>
-    setExpenseModalState({ isOpen: true, group: group, expenseToEdit: null });
-  const openEditExpenseModal = (group: Group, expense: Expense) =>
-    setExpenseModalState({
-      isOpen: true,
-      group: group,
-      expenseToEdit: expense,
-    });
-
-  const handleExpenseSubmit = (expenseData: Expense) => {
-    const { group } = expenseModalState;
-    if (!group) return;
-
-    const isEditing = !!expenseModalState.expenseToEdit;
-    const updatedExpenses = isEditing
-      ? group.expenses.map((exp) =>
-          exp.id === expenseData.id ? expenseData : exp
-        )
-      : [expenseData, ...group.expenses];
-    handleUpdateGroup({ ...group, expenses: updatedExpenses });
-    setExpenseModalState({ isOpen: false, group: null, expenseToEdit: null });
-  };
-
-  const handleDeleteRequest = (group: Group) => {
-    setDeleteConfirmation({ isOpen: true, group });
-  };
-
-  const confirmDelete = () => {
-    if (deleteConfirmation.group) {
-      setGroups(groups.filter((g) => g.id !== deleteConfirmation.group!.id));
-      if (activeGroup && activeGroup.id === deleteConfirmation.group.id) {
+  // Delete group handler
+  const handleDeleteGroup = async (group: Group) => {
+    try {
+      await apiDeleteGroup(group._id!);
+      setGroups((prev) => prev.filter((g) => g._id !== group._id));
+      if (activeGroup?._id === group._id) {
         setActiveGroup(null);
         setView("dashboard");
       }
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message || "Failed to delete group");
     }
-    setDeleteConfirmation({ isOpen: false, group: null });
   };
 
+  // Add or edit expense, then recalc balances and update group state
+  const handleExpenseSubmit = async (expenseData: Expense) => {
+    if (!expenseModalState.group || !user) return;
+
+    try {
+      const groupId = expenseModalState.group._id!;
+      let updatedExpense: Expense;
+
+      if (expenseModalState.expenseToEdit) {
+        // Edit expense
+        const expenseId = expenseModalState.expenseToEdit._id!;
+        updatedExpense = await apiEditExpense(groupId, expenseId, expenseData);
+      } else {
+        // Add new expense
+        updatedExpense = await apiAddExpense(groupId, expenseData);
+      }
+
+      // Update group's expenses array immutably
+      const updatedGroup = { ...expenseModalState.group };
+
+      const idx = updatedGroup.expenses.findIndex(
+        (e) => e._id === updatedExpense._id
+      );
+
+      if (idx > -1) {
+        updatedGroup.expenses[idx] = updatedExpense;
+      } else {
+        updatedGroup.expenses = [updatedExpense, ...updatedGroup.expenses];
+      }
+
+      // Calculate balances with updated data
+      const { processedGroups } = calculateAllBalances(
+        [updatedGroup],
+        user.username
+      );
+      const processedGroup = processedGroups[0];
+
+      // Update state with processed group data
+      updateGroupLocally(processedGroup);
+
+      // Close modal and clear
+      setExpenseModalState({ isOpen: false, group: null, expenseToEdit: null });
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message || "Failed to submit expense");
+    }
+  };
+
+  // Compute summary for dashboard balances dynamically
+  const { processedGroups, overallSummary } = useMemo(() => {
+    if (!user) {
+      return {
+        processedGroups: [],
+        overallSummary: {
+          totalGroups: 0,
+          totalSpent: 0,
+          totalReceivable: 0,
+          totalPayable: 0,
+        },
+      };
+    }
+    return calculateAllBalances(groups, user.username);
+  }, [groups, user]);
+
+  // Render main view depending on current UI state
   const renderView = () => {
-    if (view === "group" && activeGroup)
+    if (view === "group" && activeGroup) {
       return (
         <GroupView
           group={activeGroup}
           onBack={() => setView("dashboard")}
-          onUpdateGroup={handleUpdateGroup}
+          onUpdateGroup={updateGroupLocally}
           onAddMember={handleAddMemberToGroup}
-          onLogExpense={() => openNewExpenseModal(activeGroup)}
+          onLogExpense={() =>
+            setExpenseModalState({
+              isOpen: true,
+              group: activeGroup,
+              expenseToEdit: null,
+            })
+          }
           onEditExpense={(expense) =>
-            openEditExpenseModal(activeGroup, expense)
+            setExpenseModalState({
+              isOpen: true,
+              group: activeGroup,
+              expenseToEdit: expense,
+            })
           }
         />
       );
-
+    }
     return (
       <Dashboard
         groups={processedGroups}
         summary={overallSummary}
         onGroupSelect={handleGroupSelect}
         onShowCreateGroup={() => setIsCreatingGroup(true)}
-        onLogExpenseForGroup={openNewExpenseModal}
-        onDeleteGroup={handleDeleteRequest}
+        onLogExpenseForGroup={(group) =>
+          setExpenseModalState({ isOpen: true, group, expenseToEdit: null })
+        }
+        onDeleteGroup={(group) =>
+          setDeleteConfirmation({ isOpen: true, group })
+        }
       />
     );
   };
 
-  // If user not logged in, show LoginPage only
   if (!user) {
-    return <LoginPage onLogin={(username) => setUser(username)} />;
+    return showSignUp ? (
+      <SignUpPage
+        onSignUp={handleSignUp}
+        errorMessage={error ?? undefined}
+        onSwitchToLogin={() => {
+          setShowSignUp(false);
+          setError(null);
+        }}
+      />
+    ) : (
+      <LoginPage
+        onLogin={handleLogin}
+        errorMessage={error ?? undefined}
+        onSwitchToSignUp={() => {
+          setShowSignUp(true);
+          setError(null);
+        }}
+      />
+    );
   }
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen font-sans text-gray-900 dark:text-gray-100 relative">
+    <div
+      className="bg-gray-50 dark:bg-gray-900 min-h-screen font-sans text-gray-900 dark:text-gray-100 relative"
+      data-testid="app-container"
+    >
       {/* Logout button */}
       <button
-        onClick={() => {
-          setUser(null);
-          // On logout, reset view and active group too for safety
-          setView("dashboard");
-          setActiveGroup(null);
-        }}
+        onClick={handleLogout}
         className="fixed top-4 right-4 bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded shadow-lg transition"
         aria-label="Logout"
+        type="button"
       >
         Logout
       </button>
 
-      <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-        {renderView()}
-      </main>
+      {/* Error display */}
+      {error && (
+        <div className="absolute top-16 right-4 bg-red-200 border border-red-600 text-red-800 p-2 rounded shadow z-50 max-w-xs">
+          {error}
+          <button
+            aria-label="Close error"
+            onClick={() => setError(null)}
+            className="ml-2 text-red-600 hover:text-red-800 font-bold"
+            type="button"
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
+      {/* Loading indicator */}
+      {loadingGroups ? (
+        <p className="p-4 text-center">Loading your groups...</p>
+      ) : (
+        <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+          {renderView()}
+        </main>
+      )}
+
+      {/* Modals */}
       {isCreatingGroup && (
         <CreateGroupModal
           onClose={() => setIsCreatingGroup(false)}
@@ -308,7 +436,12 @@ export default function App() {
       <ConfirmationModal
         isOpen={deleteConfirmation.isOpen}
         onClose={() => setDeleteConfirmation({ isOpen: false, group: null })}
-        onConfirm={confirmDelete}
+        onConfirm={() => {
+          if (deleteConfirmation.group) {
+            handleDeleteGroup(deleteConfirmation.group);
+          }
+          setDeleteConfirmation({ isOpen: false, group: null });
+        }}
         groupName={deleteConfirmation.group?.name}
       />
     </div>

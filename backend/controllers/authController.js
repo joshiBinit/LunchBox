@@ -1,62 +1,81 @@
 const User = require("../models/User");
-const bcrypt = require("bcryptjs");
+const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "30d" });
-};
-
-exports.register = async (req, res) => {
-  const { name, email, password } = req.body;
+// Register new user
+const register = async (req, res) => {
   try {
-    let user = await User.findOne({ email });
-    if (user) return res.status(400).json({ message: "User already exists" });
+    const { username, email, password } = req.body;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    if (!username || !email || !password)
+      return res.status(400).json({ message: "All fields are required" });
 
-    user = await User.create({
-      name,
+    // Check if user/email exists
+    const existingUser = await User.findOne({ $or: [{ username }, { email }] });
+
+    if (existingUser)
+      return res
+        .status(409)
+        .json({ message: "Username or Email already in use" });
+
+    // Hash password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    const newUser = new User({
+      username,
       email,
       password: hashedPassword,
     });
 
-    res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      token: generateToken(user._id),
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    await newUser.save();
+
+    // Create JWT token
+    const token = jwt.sign(
+      { userId: newUser._id, username: newUser.username },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.status(201).json({ token, user: { id: newUser._id, username, email } });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to register user" });
   }
 };
 
-exports.login = async (req, res) => {
-  const { email, password } = req.body;
+// Login user
+const login = async (req, res) => {
   try {
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "Invalid credentials" });
+    const { usernameOrEmail, password } = req.body;
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res.status(400).json({ message: "Invalid credentials" });
+    if (!usernameOrEmail || !password)
+      return res.status(400).json({ message: "All fields are required" });
+
+    // Find user by username or email
+    const user = await User.findOne({
+      $or: [{ username: usernameOrEmail }, { email: usernameOrEmail }],
+    });
+
+    if (!user) return res.status(401).json({ message: "Invalid credentials" });
+
+    // Verify password
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(401).json({ message: "Invalid credentials" });
+
+    // Create JWT token
+    const token = jwt.sign(
+      { userId: user._id, username: user.username },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
     res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      token: generateToken(user._id),
+      token,
+      user: { id: user._id, username: user.username, email: user.email },
     });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to login" });
   }
 };
 
-exports.getMe = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select("-password");
-    res.json(user);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
+module.exports = { register, login };

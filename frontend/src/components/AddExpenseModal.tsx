@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Card } from "./Card";
 import { Plus, Trash2, X } from "lucide-react";
-import type { Group, Expense, ExpenseItem } from "../types";
+import type { Group, Expense, ExpenseItem, UserRef } from "../types";
 
 interface AddExpenseModalProps {
   group: Group;
@@ -10,62 +10,79 @@ interface AddExpenseModalProps {
   expenseToEdit: Expense | null;
 }
 
+// Helper to get username string from UserRef union type
+const getUsername = (user: UserRef): string => {
+  if (typeof user === "string") return user;
+  if (user && typeof user === "object" && "username" in user)
+    return user.username;
+  return "";
+};
+
 export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   group,
   onClose,
   onExpenseSubmit,
   expenseToEdit,
 }) => {
+  // Initialize date to today or from edited expense
   const [date, setDate] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
   const [restaurant, setRestaurant] = useState("");
-  const [payer, setPayer] = useState(group.admin);
-  const [items, setItems] = useState<ExpenseItem[]>([
-    { id: Date.now(), name: "", cost: 0, sharedBy: [] },
-  ]);
-  const [activeItemId, setActiveItemId] = useState<number | null>(null);
+  const [payer, setPayer] = useState<string>(getUsername(group.admin));
 
+  // Items state - use string _id for MongoDB IDs and temporary generated IDs
+  const [items, setItems] = useState<ExpenseItem[]>([
+    { _id: Date.now().toString(), name: "", cost: 0, sharedBy: [] },
+  ]);
+  const [activeItemId, setActiveItemId] = useState<string | null>(null);
+
+  // Effect: When editing an existing expense or when group.admin changes, update form state
   useEffect(() => {
     if (expenseToEdit) {
-      setDate(expenseToEdit.date);
+      setDate(expenseToEdit.date.split("T")[0]);
+
       setRestaurant(expenseToEdit.restaurant || "");
-      setPayer(expenseToEdit.payer || group.admin);
-      const loadedItems = expenseToEdit.items.map((item, index) => ({
+      setPayer(getUsername(expenseToEdit.payer) || getUsername(group.admin));
+
+      // Load items, ensuring each has _id string
+      const loadedItems = expenseToEdit.items.map((item, idx) => ({
         ...item,
-        id: item.id || Date.now() + index,
+        _id: item._id || (Date.now() + idx).toString(),
       }));
       setItems(loadedItems);
-      setActiveItemId(loadedItems[0]?.id || null);
+      setActiveItemId(loadedItems[0]?._id || null);
     } else {
-      const firstItemId = Date.now();
-      setItems([{ id: firstItemId, name: "", cost: 0, sharedBy: [] }]);
+      const firstItemId = Date.now().toString();
+      setItems([{ _id: firstItemId, name: "", cost: 0, sharedBy: [] }]);
       setActiveItemId(firstItemId);
       setRestaurant("");
-      setPayer(group.admin);
+      setPayer(getUsername(group.admin));
       setDate(new Date().toISOString().split("T")[0]);
     }
   }, [expenseToEdit, group.admin]);
 
+  // Handle single item field change
   const handleItemChange = (
-    id: number,
+    id: string,
     field: keyof ExpenseItem,
     value: any
   ) => {
     setItems(
       items.map((item) =>
-        item.id === id
+        item._id === id
           ? { ...item, [field]: field === "cost" ? Number(value) : value }
           : item
       )
     );
   };
 
+  // Toggle member sharing on the active item
   const handleShareToggle = (memberName: string) => {
     if (!activeItemId) return;
     setItems(
       items.map((item) => {
-        if (item.id === activeItemId) {
+        if (item._id === activeItemId) {
           const newSharedBy = item.sharedBy.includes(memberName)
             ? item.sharedBy.filter((m) => m !== memberName)
             : [...item.sharedBy, memberName];
@@ -76,32 +93,42 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     );
   };
 
+  // Add a new empty item row
   const addItemRow = () => {
-    const newId = Date.now();
-    setItems([...items, { id: newId, name: "", cost: 0, sharedBy: [] }]);
+    const newId = Date.now().toString();
+    setItems([...items, { _id: newId, name: "", cost: 0, sharedBy: [] }]);
     setActiveItemId(newId);
   };
 
-  const removeItemRow = (id: number) => {
-    const newItems = items.filter((item) => item.id !== id);
+  // Remove item by id, adjust active item
+  const removeItemRow = (id: string) => {
+    const newItems = items.filter((item) => item._id !== id);
     setItems(newItems);
     if (activeItemId === id) {
-      setActiveItemId(newItems[0]?.id || null);
+      setActiveItemId(newItems[0]?._id || null);
     }
   };
 
+  // Calculate total bill and split per group member
   const { billSplit, totalBill } = useMemo(() => {
     const split: Record<string, number> = {};
     let total = 0;
-    group.members.forEach((m) => (split[m] = 0));
 
+    // Initialize split amounts for all members (using usernames)
+    group.members.forEach((m) => {
+      const memberName = typeof m === "string" ? m : getUsername(m);
+      if (memberName) split[memberName] = 0;
+    });
+
+    // Sum costs and split shares
     items.forEach((item) => {
       const cost = item.cost || 0;
       total += cost;
       if (cost > 0 && item.sharedBy.length > 0) {
         const shareCost = cost / item.sharedBy.length;
         item.sharedBy.forEach((member) => {
-          split[member] += shareCost;
+          // Defensive: member should be a string username
+          split[member] = (split[member] || 0) + shareCost;
         });
       }
     });
@@ -109,29 +136,42 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     return { billSplit: split, totalBill: total };
   }, [items, group.members]);
 
+  // Handle form submit
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("handleSubmit triggered");
     const validItems = items.filter(
-      (i) => i.name.trim() && i.cost > 0 && i.sharedBy.length > 0
+      (i) => i.name.trim().length > 0 && i.cost > 0 && i.sharedBy.length > 0
     );
+    if (validItems.length === 0) {
+      console.warn("No valid items to submit");
+      return;
+    }
     if (validItems.length > 0) {
       onExpenseSubmit({
-        id: expenseToEdit ? expenseToEdit.id : Date.now(),
+        _id: expenseToEdit ? expenseToEdit._id : undefined,
         date,
         restaurant,
         payer,
-        items: validItems.map((i) => ({
-          id: i.id || Date.now(),
-          name: i.name.trim(),
-          cost: i.cost,
-          sharedBy: i.sharedBy,
-        })),
+        items: validItems.map((i) => {
+          const itemPayload: any = {
+            name: i.name.trim(),
+            cost: i.cost,
+            sharedBy: i.sharedBy,
+          };
+          // Only include _id if it's a valid ObjectId string (edit mode)
+          if (expenseToEdit && i._id && /^[a-f\d]{24}$/i.test(i._id)) {
+            itemPayload._id = i._id;
+          }
+          return itemPayload;
+        }),
         totalCost: totalBill,
       });
     }
   };
 
-  const activeItem = items.find((i) => i.id === activeItemId);
+  // Currently active item for sharing toggles
+  const activeItem = items.find((i) => i._id === activeItemId);
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
@@ -175,11 +215,14 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
               <option value="" disabled>
                 Bill Paid By...
               </option>
-              {group.members.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
+              {group.members.map((m) => {
+                const memberName = typeof m === "string" ? m : getUsername(m);
+                return (
+                  <option key={memberName} value={memberName}>
+                    {memberName}
+                  </option>
+                );
+              })}
             </select>
           </div>
           <div className="flex-grow grid grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden">
@@ -187,10 +230,10 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
               <div className="flex-grow overflow-y-auto pr-2 -mr-2 space-y-2">
                 {items.map((item) => (
                   <div
-                    key={item.id}
-                    onFocus={() => setActiveItemId(item.id)}
+                    key={item._id}
+                    onFocus={() => setActiveItemId(item._id)}
                     className={`p-3 rounded-lg flex items-center space-x-2 transition-all ${
-                      activeItemId === item.id
+                      activeItemId === item._id
                         ? "bg-blue-100 dark:bg-blue-900/50 ring-2 ring-blue-500"
                         : "bg-gray-50 dark:bg-gray-800"
                     }`}
@@ -199,7 +242,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                       type="text"
                       value={item.name}
                       onChange={(e) =>
-                        handleItemChange(item.id, "name", e.target.value)
+                        handleItemChange(item._id, "name", e.target.value)
                       }
                       placeholder="e.g., 'Chicken Biryani'"
                       className="flex-grow input-style"
@@ -208,7 +251,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                       type="number"
                       value={item.cost}
                       onChange={(e) =>
-                        handleItemChange(item.id, "cost", e.target.value)
+                        handleItemChange(item._id, "cost", e.target.value)
                       }
                       placeholder="0.00"
                       className="w-32 input-style"
@@ -217,7 +260,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                     />
                     <button
                       type="button"
-                      onClick={() => removeItemRow(item.id)}
+                      onClick={() => removeItemRow(item._id)}
                       className="flex-shrink-0 p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"
                       aria-label="Remove item"
                     >
@@ -241,13 +284,15 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
               </h4>
               <div className="flex-grow overflow-y-auto space-y-2">
                 {group.members.map((member) => {
-                  const isSelected = activeItem?.sharedBy.includes(member);
+                  const memberName =
+                    typeof member === "string" ? member : getUsername(member);
+                  const isSelected = activeItem?.sharedBy.includes(memberName);
                   return (
                     <button
-                      key={member}
+                      key={memberName}
                       type="button"
                       disabled={!activeItem}
-                      onClick={() => handleShareToggle(member)}
+                      onClick={() => handleShareToggle(memberName)}
                       className={`w-full text-left p-2 rounded-lg font-medium transition-all duration-200 ease-in-out ${
                         isSelected
                           ? "bg-blue-500 text-white"
@@ -258,7 +303,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                           : "cursor-pointer"
                       }`}
                     >
-                      {member}
+                      {memberName}
                     </button>
                   );
                 })}
