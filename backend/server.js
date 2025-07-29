@@ -14,7 +14,7 @@ connectDB();
 // Middleware
 app.use(
   cors({
-    origin: "https://lunch-box-frontendddd.vercel.app",
+    origin: "https://lunch-box-frontend-vert.vercel.app",
     credentials: true, // if using cookies/session
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
