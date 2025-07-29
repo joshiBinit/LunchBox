@@ -1,10 +1,4 @@
-import type {
-  Group,
-  Expense,
-  ExpenseItem,
-  PersonListItemType,
-  UserRef,
-} from "./types";
+import type { Group, PersonListItemType, UserRef } from "./types";
 
 interface OverallSummary {
   totalGroups: number;
