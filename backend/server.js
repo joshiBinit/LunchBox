@@ -12,7 +12,15 @@ const authMiddleware = require("./middleware/authMiddleware");
 connectDB();
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://lunch-box-frontendddd.vercel.app",
+    credentials: true, // if using cookies/session
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  })
+);
+
+app.options("*", cors());
 app.use(express.json());
 
 // Routes
