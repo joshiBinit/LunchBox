@@ -12,15 +12,26 @@ const authMiddleware = require("./middleware/authMiddleware");
 connectDB();
 
 // Middleware
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://lunch-box-frontend-vert.vercel.app",
+  "https://lunch-box-frontendddd.vercel.app",
+];
+
 app.use(
   cors({
-    origin: "https://lunch-box-frontend-vert.vercel.app",
-    credentials: true, // if using cookies/session
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
 );
 
-app.options("*", cors());
 app.use(express.json());
 
 // Routes
