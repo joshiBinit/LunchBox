@@ -18,7 +18,7 @@ const getHeaders = () => {
 };
 
 export const login = async (username: string, password: string) => {
-  const res = await fetch(`${API_BASE}/auth/login`, {
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({ usernameOrEmail: username, password }),
@@ -33,7 +33,7 @@ export const signup = async (
   email: string,
   password: string
 ) => {
-  const res = await fetch(`${API_BASE}/auth/register`, {
+  const res = await fetch(`${API_BASE}/api/auth/register`, {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({ username, email, password }),
@@ -46,7 +46,7 @@ export const signup = async (
 };
 
 export const fetchGroupById = async (groupId: string) => {
-  const res = await fetch(`${API_BASE}/groups/${groupId}`, {
+  const res = await fetch(`${API_BASE}/api/groups/${groupId}`, {
     headers: getHeaders(),
   });
   if (!res.ok) throw new Error("Failed to fetch group");
@@ -54,7 +54,7 @@ export const fetchGroupById = async (groupId: string) => {
 };
 
 export const fetchGroups = async () => {
-  const res = await fetch(`${API_BASE}/groups`, {
+  const res = await fetch(`${API_BASE}/api/groups`, {
     headers: getHeaders(),
   });
   if (!res.ok) throw new Error("Failed to fetch groups");
@@ -74,7 +74,7 @@ export const apiAddExpense = async (groupId: string, expenseData: any) => {
 };
 
 export const createGroup = async (name: string, admin: string) => {
-  const res = await fetch(`${API_BASE}/groups`, {
+  const res = await fetch(`${API_BASE}/api/groups`, {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({ name, admin }),
@@ -84,7 +84,7 @@ export const createGroup = async (name: string, admin: string) => {
 };
 
 export const deleteGroup = async (groupId: string) => {
-  const res = await fetch(`${API_BASE}/groups/${groupId}`, {
+  const res = await fetch(`${API_BASE}/api/groups/${groupId}`, {
     method: "DELETE",
     headers: getHeaders(),
   });
@@ -93,7 +93,7 @@ export const deleteGroup = async (groupId: string) => {
 };
 
 export const addMember = async (groupId: string, username: string) => {
-  const res = await fetch(`${API_BASE}/groups/${groupId}/members`, {
+  const res = await fetch(`${API_BASE}/api/groups/${groupId}/members`, {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({ username }),
@@ -107,7 +107,7 @@ export const apiEditExpense = async (
   expenseData: any
 ) => {
   const res = await fetch(
-    `${API_BASE}/groups/${groupId}/expenses/${expenseId}`,
+    `${API_BASE}/api/groups/${groupId}/expenses/${expenseId}`,
     {
       method: "PUT",
       headers: getHeaders(),
@@ -122,7 +122,7 @@ export const apiEditExpense = async (
 };
 
 export const addExpense = async (groupId: string, expenseData: any) => {
-  const res = await fetch(`${API_BASE}/groups/${groupId}/expenses`, {
+  const res = await fetch(`${API_BASE}/api/groups/${groupId}/expenses`, {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify(expenseData),
@@ -137,7 +137,7 @@ export const editExpense = async (
   expenseData: any
 ) => {
   const res = await fetch(
-    `${API_BASE}/groups/${groupId}/expenses/${expenseId}`,
+    `${API_BASE}/api/groups/${groupId}/expenses/${expenseId}`,
     {
       method: "PUT",
       headers: getHeaders(),
