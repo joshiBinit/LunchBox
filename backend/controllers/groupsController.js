@@ -42,7 +42,14 @@ const addMemberToGroup = async (req, res) => {
     group.members.push(username.trim());
     await group.save();
 
-    res.status(200).json({ message: "Member added successfully", group });
+    // Retrieve the updated group with expenses populated
+    const updatedGroup = await Group.findById(groupId).lean();
+    const expenses = await Expense.find({ groupId }).lean();
+    updatedGroup.expenses = expenses;
+
+    res
+      .status(200)
+      .json({ message: "Member added successfully", group: updatedGroup });
   } catch (err) {
     console.error("Error adding member to group:", err);
     res.status(500).json({ message: "Failed to add member to group" });

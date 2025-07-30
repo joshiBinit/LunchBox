@@ -248,7 +248,6 @@ export default function App() {
   const handleAddMemberToGroup = async (memberName: string) => {
     if (!activeGroup) return;
 
-    // Prevent adding duplicates
     if (
       activeGroup.members.some(
         (m: UserRef) => (typeof m === "string" ? m : m.username) === memberName
@@ -259,16 +258,25 @@ export default function App() {
     }
 
     try {
-      const response = await apiAddMember(activeGroup._id!, memberName);
+      await apiAddMember(activeGroup._id!, memberName);
 
-      // Update local state with backend's updated group info
-      setGroups((prevGroups) =>
-        prevGroups.map((g) => (g._id === activeGroup._id ? response.group : g))
+      // Fetch full updated group details including expenses after adding member
+      const fullGroup = await fetchGroupById(activeGroup._id!);
+
+      // Calculate balances
+      const { processedGroups } = calculateAllBalances(
+        [fullGroup],
+        user!.username
       );
+      const processedGroup = processedGroups[0];
 
-      if (activeGroup._id === response.group._id) {
-        setActiveGroup(response.group);
-      }
+      // Update groups and activeGroup states with this full processed group
+      setGroups((prevGroups) =>
+        prevGroups.map((g) =>
+          g._id === processedGroup._id ? processedGroup : g
+        )
+      );
+      setActiveGroup(processedGroup);
 
       setError(null);
     } catch (err: any) {
