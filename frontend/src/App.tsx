@@ -4,7 +4,6 @@ import { Dashboard } from "./components/Dashboard";
 import { GroupView } from "./components/GroupView";
 import { AddExpenseModal } from "./components/AddExpenseModal";
 import { ConfirmationModal } from "./components/ConfirmationModal";
-// import { Card } from "./components/Card";
 import { Plus, X, LogOut, AlertCircle } from "lucide-react";
 import { calculateAllBalances } from "./utils";
 import { LoginPage } from "./components/LoginPage";
@@ -119,15 +118,17 @@ export default function App() {
     }
   }, [user]);
 
-  // Load groups + full details + calculate balances
+  // Load groups + full details + calculate balances, filtering by user membership
   const loadGroups = async () => {
     setLoadingGroups(true);
     setError(null);
     try {
       if (!user) throw new Error("User not logged in");
 
+      // 1) Fetch basic group list
       const groupsSummary = await fetchGroups();
 
+      // 2) Fetch full group details including expenses
       const groupsWithDetails: Group[] = await Promise.all(
         groupsSummary.map(async (g: { _id: string }) => {
           const fullGroup = await fetchGroupById(g._id);
@@ -135,11 +136,22 @@ export default function App() {
         })
       );
 
+      // 3) Filter groups where current user is a member
+      const filteredGroups = groupsWithDetails.filter((group) =>
+        group.members.some((member) =>
+          typeof member === "string"
+            ? member === user.username
+            : member?.username === user.username
+        )
+      );
+
+      // 4) Calculate balances only on filtered groups
       const { processedGroups } = calculateAllBalances(
-        groupsWithDetails,
+        filteredGroups,
         user.username
       );
 
+      // 5) Update state with filtered and processed groups
       setGroups(processedGroups);
       setActiveGroup(null);
       setView("dashboard");
@@ -150,7 +162,7 @@ export default function App() {
     }
   };
 
-  // Load full group details and balances (when selected)
+  // Load full group details and calculate balances when a group is selected
   const loadGroupById = async (groupId: string) => {
     setLoadingGroups(true);
     setError(null);
@@ -210,7 +222,7 @@ export default function App() {
     loadGroupById(group._id);
   };
 
-  // Create new group handler
+  // Create new group
   const handleCreateGroup = async (groupName: string) => {
     try {
       if (!user) throw new Error("Unauthorized");
@@ -222,7 +234,7 @@ export default function App() {
     }
   };
 
-  // Update group locally
+  // Update group locally and update activeGroup if matching
   const updateGroupLocally = (updatedGroup: Group) => {
     setGroups((prev) =>
       prev.map((g) => (g._id === updatedGroup._id ? updatedGroup : g))
@@ -232,11 +244,11 @@ export default function App() {
     }
   };
 
-  // Add member to group
+  // Add member to group with backend validation
   const handleAddMemberToGroup = async (memberName: string) => {
     if (!activeGroup) return;
 
-    // Prevent adding duplicate members locally as well
+    // Prevent adding duplicates
     if (
       activeGroup.members.some(
         (m: UserRef) => (typeof m === "string" ? m : m.username) === memberName
@@ -249,6 +261,7 @@ export default function App() {
     try {
       const response = await apiAddMember(activeGroup._id!, memberName);
 
+      // Update local state with backend's updated group info
       setGroups((prevGroups) =>
         prevGroups.map((g) => (g._id === activeGroup._id ? response.group : g))
       );
@@ -286,7 +299,7 @@ export default function App() {
     }
   };
 
-  // Add or edit expense, recalc balances, update state
+  // Add or edit expense, recalc balances and update state
   const handleExpenseSubmit = async (expenseData: Expense) => {
     if (!expenseModalState.group || !user) return;
 
@@ -305,7 +318,6 @@ export default function App() {
       updatedGroup.expenses = updatedGroup.expenses || [];
 
       if (!updatedExpense._id) {
-        // Optionally assign a temporary id or throw error if ID missing
         updatedExpense._id = `temp-id-${Date.now()}`;
       }
 
@@ -414,58 +426,7 @@ export default function App() {
   }
 
   return (
-    <div
-      className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen font-sans text-slate-900 relative transition-all duration-300"
-      data-testid="app-container"
-    >
-      {/* Header with logout button */}
-      <header className="sticky top-0 z-40 backdrop-blur-md bg-white/80 border-b border-slate-200/60 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-3">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              ExpenseTracker
-            </h1>
-            {user && (
-              <span className="text-sm text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-                Welcome, {user.username}
-              </span>
-            )}
-          </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-slate-200"
-            aria-label="Logout"
-            type="button"
-          >
-            <LogOut size={16} />
-            <span className="hidden sm:inline">Logout</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Error display */}
-      {error && (
-        <div className="fixed top-20 right-4 z-50 animate-in slide-in-from-right duration-300">
-          <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl shadow-lg max-w-sm flex items-start space-x-3">
-            <AlertCircle
-              size={20}
-              className="text-red-500 flex-shrink-0 mt-0.5"
-            />
-            <div className="flex-1">
-              <p className="text-sm font-medium">{error}</p>
-            </div>
-            <button
-              aria-label="Close error"
-              onClick={() => setError(null)}
-              className="text-red-400 hover:text-red-600 transition-colors p-1 rounded-full hover:bg-red-100"
-              type="button"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        </div>
-      )}
-
+    <>
       <ToastContainer
         position="top-right"
         autoClose={3000}
@@ -477,57 +438,111 @@ export default function App() {
         draggable
         pauseOnHover
       />
-
-      {/* Loading indicator */}
-      {loadingGroups ? (
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="text-slate-600 font-medium">Loading your groups...</p>
+      <div
+        className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen font-sans text-slate-900 relative transition-all duration-300"
+        data-testid="app-container"
+      >
+        {/* Header with logout button */}
+        <header className="sticky top-0 z-40 backdrop-blur-md bg-white/80 border-b border-slate-200/60 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <div className="flex items-center space-x-3">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                ExpenseTracker
+              </h1>
+              {user && (
+                <span className="text-sm text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+                  Welcome, {user.username}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-slate-200"
+              aria-label="Logout"
+              type="button"
+            >
+              <LogOut size={16} />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
           </div>
-        </div>
-      ) : (
-        <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-          <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6 lg:p-8">
-            {renderView()}
+        </header>
+
+        {/* Error display */}
+        {error && (
+          <div className="fixed top-20 right-4 z-50 animate-in slide-in-from-right duration-300">
+            <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl shadow-lg max-w-sm flex items-start space-x-3">
+              <AlertCircle
+                size={20}
+                className="text-red-500 flex-shrink-0 mt-0.5"
+              />
+              <div className="flex-1">
+                <p className="text-sm font-medium">{error}</p>
+              </div>
+              <button
+                aria-label="Close error"
+                onClick={() => setError(null)}
+                className="text-red-400 hover:text-red-600 transition-colors p-1 rounded-full hover:bg-red-100"
+                type="button"
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
-        </main>
-      )}
+        )}
 
-      {/* Modals */}
-      {isCreatingGroup && (
-        <CreateGroupModal
-          onClose={() => setIsCreatingGroup(false)}
-          onGroupCreate={handleCreateGroup}
+        {/* Loading indicator */}
+        {loadingGroups ? (
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="text-center space-y-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-slate-600 font-medium">
+                Loading your groups...
+              </p>
+            </div>
+          </div>
+        ) : (
+          <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+            <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6 lg:p-8">
+              {renderView()}
+            </div>
+          </main>
+        )}
+
+        {/* Modals */}
+        {isCreatingGroup && (
+          <CreateGroupModal
+            onClose={() => setIsCreatingGroup(false)}
+            onGroupCreate={handleCreateGroup}
+          />
+        )}
+
+        {expenseModalState.isOpen && expenseModalState.group && (
+          <AddExpenseModal
+            group={expenseModalState.group}
+            onClose={() =>
+              setExpenseModalState({
+                isOpen: false,
+                group: null,
+                expenseToEdit: null,
+              })
+            }
+            onExpenseSubmit={handleExpenseSubmit}
+            expenseToEdit={expenseModalState.expenseToEdit}
+          />
+        )}
+
+        <ConfirmationModal
+          isOpen={deleteConfirmation.isOpen}
+          onClose={() => setDeleteConfirmation({ isOpen: false, group: null })}
+          onConfirm={() => {
+            if (deleteConfirmation.group) {
+              handleDeleteGroup(deleteConfirmation.group);
+            }
+            setDeleteConfirmation({ isOpen: false, group: null });
+          }}
+          groupName={deleteConfirmation.group?.name}
         />
-      )}
-
-      {expenseModalState.isOpen && expenseModalState.group && (
-        <AddExpenseModal
-          group={expenseModalState.group}
-          onClose={() =>
-            setExpenseModalState({
-              isOpen: false,
-              group: null,
-              expenseToEdit: null,
-            })
-          }
-          onExpenseSubmit={handleExpenseSubmit}
-          expenseToEdit={expenseModalState.expenseToEdit}
-        />
-      )}
-
-      <ConfirmationModal
-        isOpen={deleteConfirmation.isOpen}
-        onClose={() => setDeleteConfirmation({ isOpen: false, group: null })}
-        onConfirm={() => {
-          if (deleteConfirmation.group) {
-            handleDeleteGroup(deleteConfirmation.group);
-          }
-          setDeleteConfirmation({ isOpen: false, group: null });
-        }}
-        groupName={deleteConfirmation.group?.name}
-      />
-    </div>
+      </div>
+    </>
   );
 }
