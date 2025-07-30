@@ -4,7 +4,7 @@ import { Dashboard } from "./components/Dashboard";
 import { GroupView } from "./components/GroupView";
 import { AddExpenseModal } from "./components/AddExpenseModal";
 import { ConfirmationModal } from "./components/ConfirmationModal";
-import { Card } from "./components/Card";
+// import { Card } from "./components/Card";
 import { Plus, X, LogOut, AlertCircle } from "lucide-react";
 import { calculateAllBalances } from "./utils";
 import { LoginPage } from "./components/LoginPage";
@@ -42,7 +42,7 @@ const CreateGroupModal: React.FC<{
       <div className="w-full max-w-md bg-white shadow-2xl rounded-2xl border border-slate-200 animate-in zoom-in-95 duration-200">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-slate-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h2 className="text-2xl font-bold text-slate-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text ">
               Create New Group
             </h2>
             <button
