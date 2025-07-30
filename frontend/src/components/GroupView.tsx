@@ -8,13 +8,12 @@ import { Plus, Edit, ChevronDown, ChevronRight } from "lucide-react";
 interface GroupViewProps {
   group: Group;
   onBack: () => void;
-  onUpdateGroup: (group: Group) => void; // Optional, if you use it
+  onUpdateGroup: (group: Group) => void;
   onAddMember: (memberName: string) => void;
   onLogExpense: () => void;
   onEditExpense: (expense: Expense) => void;
 }
 
-// Utility helper to normalize UserRef to a username string
 const getUsername = (user: UserRef): string => {
   if (!user) return "";
   if (typeof user === "string") return user;
@@ -35,7 +34,6 @@ export const GroupView: React.FC<GroupViewProps> = ({
   );
   const [isAddingMember, setIsAddingMember] = useState(false);
 
-  // Sort expenses by date descending safely
   const sortedExpenses = [...(group.expenses ?? [])].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
@@ -45,7 +43,7 @@ export const GroupView: React.FC<GroupViewProps> = ({
       <div>
         <button
           onClick={onBack}
-          className="text-blue-500 hover:underline mb-4 flex items-center space-x-1"
+          className="text-black hover:underline mb-4 flex items-center space-x-1 transition-colors"
           type="button"
         >
           <ChevronDown className="w-4 h-4 transform -rotate-90" />
@@ -53,16 +51,14 @@ export const GroupView: React.FC<GroupViewProps> = ({
         </button>
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
-              {group.name}
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">
+            <h1 className="text-3xl font-bold text-black">{group.name}</h1>
+            <p className="text-gray-700">
               Admin: {getUsername(group.admin) || "Unknown"}
             </p>
           </div>
           <button
             onClick={onLogExpense}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center space-x-2"
+            className="bg-black hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center space-x-2 shadow-md"
             type="button"
           >
             <Plus className="w-5 h-5" />
@@ -74,14 +70,14 @@ export const GroupView: React.FC<GroupViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <Card>
-            <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
+            <div className="flex border-b border-gray-300 mb-4">
               <button
                 type="button"
                 onClick={() => setActiveTab("receivable")}
                 className={`py-2 px-4 font-medium transition-colors ${
                   activeTab === "receivable"
-                    ? "border-b-2 border-blue-500 text-blue-500"
-                    : "text-gray-500 dark:text-gray-400 hover:text-blue-500"
+                    ? "border-b-2 border-black text-black"
+                    : "text-gray-400 hover:text-black"
                 }`}
               >
                 Who Owes You
@@ -91,14 +87,14 @@ export const GroupView: React.FC<GroupViewProps> = ({
                 onClick={() => setActiveTab("payable")}
                 className={`py-2 px-4 font-medium transition-colors ${
                   activeTab === "payable"
-                    ? "border-b-2 border-red-500 text-red-500"
-                    : "text-gray-500 dark:text-gray-400 hover:text-red-500"
+                    ? "border-b-2 border-red-700 text-red-700"
+                    : "text-red-400 hover:text-red-700"
                 }`}
               >
                 Who You Owe
               </button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-3 min-h-[100px]">
               {activeTab === "receivable" &&
               group.groupReceivables &&
               group.groupReceivables.length > 0 ? (
@@ -108,11 +104,11 @@ export const GroupView: React.FC<GroupViewProps> = ({
                     name={p.name}
                     amount={p.amount}
                     type="receivable"
-                    id={""}
+                    id=""
                   />
                 ))
               ) : activeTab === "receivable" ? (
-                <p className="text-center text-gray-500 py-4">
+                <p className="text-center text-gray-400 py-4">
                   No one in this group owes you.
                 </p>
               ) : null}
@@ -126,11 +122,11 @@ export const GroupView: React.FC<GroupViewProps> = ({
                     name={p.name}
                     amount={p.amount}
                     type="payable"
-                    id={""}
+                    id=""
                   />
                 ))
               ) : activeTab === "payable" ? (
-                <p className="text-center text-gray-500 py-4">
+                <p className="text-center text-red-400 py-4">
                   You don't owe anyone in this group.
                 </p>
               ) : null}
@@ -138,13 +134,10 @@ export const GroupView: React.FC<GroupViewProps> = ({
           </Card>
 
           <Card>
-            <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">
-              Expense Log
-            </h2>
+            <h2 className="text-xl font-bold mb-4 text-black">Expense Log</h2>
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
               {sortedExpenses.length > 0 ? (
                 sortedExpenses.map((exp) => {
-                  // Compute unique sharers usernames (flatten and normalize UserRef)
                   const allSharers = Array.from(
                     new Set(
                       (exp.items ?? [])
@@ -160,13 +153,10 @@ export const GroupView: React.FC<GroupViewProps> = ({
                   );
 
                   return (
-                    <div
-                      key={exp._id}
-                      className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
-                    >
+                    <div key={exp._id} className="p-4 bg-gray-50 rounded-lg">
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="font-bold text-lg text-gray-800 dark:text-gray-100">
+                          <p className="font-bold text-lg text-black">
                             {exp.restaurant || "Lunch"} on{" "}
                             {new Date(exp.date).toLocaleDateString("en-GB", {
                               month: "long",
@@ -174,10 +164,10 @@ export const GroupView: React.FC<GroupViewProps> = ({
                               year: "numeric",
                             })}
                           </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                          <p className="text-sm text-gray-700">
                             Paid by: {getUsername(exp.payer) || "Unknown"}
                           </p>
-                          <div className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-300">
+                          <div className="mt-2 space-y-1 text-sm text-gray-800">
                             {exp.items.map((item) => (
                               <div
                                 key={item._id}
@@ -192,28 +182,29 @@ export const GroupView: React.FC<GroupViewProps> = ({
                           </div>
                         </div>
                         <div className="text-right flex-shrink-0 ml-4">
-                          <p className="text-xl font-bold text-blue-500">
+                          <p className="text-xl font-bold text-black">
                             Rs. {exp.totalCost.toFixed(2)}
                           </p>
                           <button
                             type="button"
                             onClick={() => onEditExpense(exp)}
-                            className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-400 mt-1 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                            className="text-black hover:text-gray-700 mt-1 p-1 rounded-full hover:bg-gray-200 transition-colors"
                             aria-label="Edit expense"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
-                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                        <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">
+
+                      <div className="mt-3 pt-3 border-t border-gray-300">
+                        <p className="text-xs font-semibold text-gray-700 mb-2">
                           Participants:
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {allSharers.map((m) => (
                             <span
                               key={m}
-                              className="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-1 rounded-full"
+                              className="text-xs bg-gray-200 text-black px-2 py-1 rounded-full"
                             >
                               {m}
                             </span>
@@ -224,7 +215,7 @@ export const GroupView: React.FC<GroupViewProps> = ({
                   );
                 })
               ) : (
-                <p className="text-center text-gray-500 py-8">
+                <p className="text-center text-gray-400 py-8">
                   No expenses logged yet.
                 </p>
               )}
@@ -233,7 +224,7 @@ export const GroupView: React.FC<GroupViewProps> = ({
         </div>
 
         <Card className="lg:col-span-1 self-start">
-          <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">
+          <h2 className="text-xl font-bold mb-4 text-black">
             Members ({group.members.length})
           </h2>
           <div className="space-y-2">
@@ -242,14 +233,12 @@ export const GroupView: React.FC<GroupViewProps> = ({
               return (
                 <div
                   key={username || Math.random()}
-                  className="flex items-center space-x-3 p-2 bg-gray-100 dark:bg-gray-700/50 rounded-lg"
+                  className="flex items-center space-x-3 p-2 bg-gray-100 rounded-lg"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center font-semibold text-gray-700 dark:text-white">
+                  <div className="w-8 h-8 rounded-full bg-gray-400 flex items-center justify-center font-semibold text-black">
                     {username.charAt(0)}
                   </div>
-                  <span className="text-gray-800 dark:text-gray-200">
-                    {username}
-                  </span>
+                  <span className="text-black">{username}</span>
                 </div>
               );
             })}
@@ -258,7 +247,7 @@ export const GroupView: React.FC<GroupViewProps> = ({
           <button
             type="button"
             onClick={() => setIsAddingMember(!isAddingMember)}
-            className="mt-4 text-blue-500 hover:text-blue-600 font-semibold flex items-center space-x-1"
+            className="mt-4 text-black hover:text-gray-700 font-semibold flex items-center space-x-1 transition-colors"
           >
             <span>{isAddingMember ? "Cancel" : "Add Member"}</span>
             <ChevronRight

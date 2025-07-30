@@ -5,10 +5,12 @@ import { GroupView } from "./components/GroupView";
 import { AddExpenseModal } from "./components/AddExpenseModal";
 import { ConfirmationModal } from "./components/ConfirmationModal";
 import { Card } from "./components/Card";
-import { Plus, X } from "lucide-react";
+import { Plus, X, LogOut, AlertCircle } from "lucide-react";
 import { calculateAllBalances } from "./utils";
 import { LoginPage } from "./components/LoginPage";
 import { SignUpPage } from "./components/SignUpPage";
+import { toast, ToastContainer } from "react-toastify";
+
 import {
   login as apiLogin,
   signup as apiSignup,
@@ -36,31 +38,43 @@ const CreateGroupModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <Card className="w-full max-w-md">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Create New Group</h2>
-          <button onClick={onClose} aria-label="Close create group modal">
-            <X />
-          </button>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="w-full max-w-md bg-white shadow-2xl rounded-2xl border border-slate-200 animate-in zoom-in-95 duration-200">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-slate-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Create New Group
+            </h2>
+            <button
+              onClick={onClose}
+              aria-label="Close create group modal"
+              type="button"
+              className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-full transition-all duration-200"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <input
+                type="text"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                placeholder="e.g., 'Weekend Trip' or 'Dinner Club'"
+                className="w-full p-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all duration-200"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={!groupName.trim()}
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-slate-300 disabled:to-slate-400 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 transition-all duration-200 shadow-lg hover:shadow-xl disabled:cursor-not-allowed"
+            >
+              <Plus size={18} />
+              <span>Create Group</span>
+            </button>
+          </form>
         </div>
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            value={groupName}
-            onChange={(e) => setGroupName(e.target.value)}
-            placeholder="e.g., 'Lunch Buddies'"
-            className="w-full p-2 rounded border border-gray-300 bg-gray-100 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
-          />
-          <button
-            type="submit"
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center space-x-2"
-          >
-            <Plus />
-            <span>Create Group</span>
-          </button>
-        </form>
-      </Card>
+      </div>
     </div>
   );
 };
@@ -105,13 +119,28 @@ export default function App() {
     }
   }, [user]);
 
-  // Load groups from backend
+  // Load groups + full details + calculate balances
   const loadGroups = async () => {
     setLoadingGroups(true);
     setError(null);
     try {
-      const groupsData = await fetchGroups();
-      setGroups(groupsData);
+      if (!user) throw new Error("User not logged in");
+
+      const groupsSummary = await fetchGroups();
+
+      const groupsWithDetails: Group[] = await Promise.all(
+        groupsSummary.map(async (g: { _id: string }) => {
+          const fullGroup = await fetchGroupById(g._id);
+          return fullGroup;
+        })
+      );
+
+      const { processedGroups } = calculateAllBalances(
+        groupsWithDetails,
+        user.username
+      );
+
+      setGroups(processedGroups);
       setActiveGroup(null);
       setView("dashboard");
     } catch (err) {
@@ -121,7 +150,7 @@ export default function App() {
     }
   };
 
-  // Load full group details including expenses, then calculate balances
+  // Load full group details and balances (when selected)
   const loadGroupById = async (groupId: string) => {
     setLoadingGroups(true);
     setError(null);
@@ -176,7 +205,7 @@ export default function App() {
     setError(null);
   };
 
-  // Handle group selection: load group data and balances
+  // Handle group selection
   const handleGroupSelect = (group: Group) => {
     loadGroupById(group._id);
   };
@@ -193,7 +222,7 @@ export default function App() {
     }
   };
 
-  // Update group in local state and activeGroup state if relevant
+  // Update group locally
   const updateGroupLocally = (updatedGroup: Group) => {
     setGroups((prev) =>
       prev.map((g) => (g._id === updatedGroup._id ? updatedGroup : g))
@@ -203,28 +232,42 @@ export default function App() {
     }
   };
 
-  // Add member to the group
+  // Add member to group
   const handleAddMemberToGroup = async (memberName: string) => {
     if (!activeGroup) return;
 
+    // Prevent adding duplicate members locally as well
     if (
       activeGroup.members.some(
         (m: UserRef) => (typeof m === "string" ? m : m.username) === memberName
       )
     ) {
-      setError("Member already exists");
+      setError("Member already exists in the group");
       return;
     }
+
     try {
-      await apiAddMember(activeGroup._id!, memberName);
-      const updatedGroup = {
-        ...activeGroup,
-        members: [...activeGroup.members, memberName],
-      };
-      updateGroupLocally(updatedGroup);
+      const response = await apiAddMember(activeGroup._id!, memberName);
+
+      setGroups((prevGroups) =>
+        prevGroups.map((g) => (g._id === activeGroup._id ? response.group : g))
+      );
+
+      if (activeGroup._id === response.group._id) {
+        setActiveGroup(response.group);
+      }
+
       setError(null);
-    } catch (err) {
-      setError((err as Error).message || "Failed to add member");
+    } catch (err: any) {
+      if (err.message) {
+        if (err.message === "User not found") {
+          toast.error("User not found");
+        } else {
+          setError(err.message);
+        }
+      } else {
+        toast.error("Failed to add member");
+      }
     }
   };
 
@@ -243,7 +286,7 @@ export default function App() {
     }
   };
 
-  // Add or edit expense, then recalc balances and update group state
+  // Add or edit expense, recalc balances, update state
   const handleExpenseSubmit = async (expenseData: Expense) => {
     if (!expenseModalState.group || !user) return;
 
@@ -252,38 +295,37 @@ export default function App() {
       let updatedExpense: Expense;
 
       if (expenseModalState.expenseToEdit) {
-        // Edit expense
         const expenseId = expenseModalState.expenseToEdit._id!;
         updatedExpense = await apiEditExpense(groupId, expenseId, expenseData);
       } else {
-        // Add new expense
         updatedExpense = await apiAddExpense(groupId, expenseData);
       }
 
-      // Update group's expenses array immutably
       const updatedGroup = { ...expenseModalState.group };
+      updatedGroup.expenses = updatedGroup.expenses || [];
+
+      if (!updatedExpense._id) {
+        // Optionally assign a temporary id or throw error if ID missing
+        updatedExpense._id = `temp-id-${Date.now()}`;
+      }
 
       const idx = updatedGroup.expenses.findIndex(
         (e) => e._id === updatedExpense._id
       );
-
       if (idx > -1) {
         updatedGroup.expenses[idx] = updatedExpense;
       } else {
         updatedGroup.expenses = [updatedExpense, ...updatedGroup.expenses];
       }
 
-      // Calculate balances with updated data
       const { processedGroups } = calculateAllBalances(
         [updatedGroup],
         user.username
       );
       const processedGroup = processedGroups[0];
 
-      // Update state with processed group data
       updateGroupLocally(processedGroup);
 
-      // Close modal and clear
       setExpenseModalState({ isOpen: false, group: null, expenseToEdit: null });
       setError(null);
     } catch (err) {
@@ -291,7 +333,7 @@ export default function App() {
     }
   };
 
-  // Compute summary for dashboard balances dynamically
+  // Memoize calculated groups and summary for dashboard
   const { processedGroups, overallSummary } = useMemo(() => {
     if (!user) {
       return {
@@ -307,7 +349,7 @@ export default function App() {
     return calculateAllBalances(groups, user.username);
   }, [groups, user]);
 
-  // Render main view depending on current UI state
+  // Render main UI
   const renderView = () => {
     if (view === "group" && activeGroup) {
       return (
@@ -373,40 +415,82 @@ export default function App() {
 
   return (
     <div
-      className="bg-gray-50 dark:bg-gray-900 min-h-screen font-sans text-gray-900 dark:text-gray-100 relative"
+      className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen font-sans text-slate-900 relative transition-all duration-300"
       data-testid="app-container"
     >
-      {/* Logout button */}
-      <button
-        onClick={handleLogout}
-        className="fixed top-4 right-4 bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded shadow-lg transition"
-        aria-label="Logout"
-        type="button"
-      >
-        Logout
-      </button>
+      {/* Header with logout button */}
+      <header className="sticky top-0 z-40 backdrop-blur-md bg-white/80 border-b border-slate-200/60 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+          <div className="flex items-center space-x-3">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              ExpenseTracker
+            </h1>
+            {user && (
+              <span className="text-sm text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+                Welcome, {user.username}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-slate-200"
+            aria-label="Logout"
+            type="button"
+          >
+            <LogOut size={16} />
+            <span className="hidden sm:inline">Logout</span>
+          </button>
+        </div>
+      </header>
 
       {/* Error display */}
       {error && (
-        <div className="absolute top-16 right-4 bg-red-200 border border-red-600 text-red-800 p-2 rounded shadow z-50 max-w-xs">
-          {error}
-          <button
-            aria-label="Close error"
-            onClick={() => setError(null)}
-            className="ml-2 text-red-600 hover:text-red-800 font-bold"
-            type="button"
-          >
-            &times;
-          </button>
+        <div className="fixed top-20 right-4 z-50 animate-in slide-in-from-right duration-300">
+          <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl shadow-lg max-w-sm flex items-start space-x-3">
+            <AlertCircle
+              size={20}
+              className="text-red-500 flex-shrink-0 mt-0.5"
+            />
+            <div className="flex-1">
+              <p className="text-sm font-medium">{error}</p>
+            </div>
+            <button
+              aria-label="Close error"
+              onClick={() => setError(null)}
+              className="text-red-400 hover:text-red-600 transition-colors p-1 rounded-full hover:bg-red-100"
+              type="button"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
       )}
 
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
+
       {/* Loading indicator */}
       {loadingGroups ? (
-        <p className="p-4 text-center">Loading your groups...</p>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="text-slate-600 font-medium">Loading your groups...</p>
+          </div>
+        </div>
       ) : (
         <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-          {renderView()}
+          <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6 lg:p-8">
+            {renderView()}
+          </div>
         </main>
       )}
 

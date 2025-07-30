@@ -7,7 +7,7 @@ interface SignUpPageProps {
     password: string
   ) => Promise<void>;
   errorMessage?: string;
-  onSwitchToLogin: () => void; // Callback to switch back to login view
+  onSwitchToLogin: () => void;
 }
 
 export const SignUpPage: React.FC<SignUpPageProps> = ({
@@ -48,8 +48,8 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-      <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6 text-center">
+      <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-2xl shadow-md p-8">
+        <h2 className="text-2xl font-bold text-black dark:text-gray-100 mb-6 text-center">
           Create Account
         </h2>
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -58,7 +58,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
             placeholder="Username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            className="w-full p-3 rounded-lg border border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 transition"
             disabled={isLoading}
             autoFocus
           />
@@ -67,7 +67,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
             placeholder="Email (optional)"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            className="w-full p-3 rounded-lg border border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 transition"
             disabled={isLoading}
           />
           <input
@@ -75,7 +75,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            className="w-full p-3 rounded-lg border border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 transition"
             disabled={isLoading}
           />
           <input
@@ -83,7 +83,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
             placeholder="Confirm Password"
             value={passwordConfirm}
             onChange={(e) => setPasswordConfirm(e.target.value)}
-            className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            className="w-full p-3 rounded-lg border border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 transition"
             disabled={isLoading}
           />
 
@@ -96,17 +96,17 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
           <button
             type="submit"
             disabled={isLoading}
-            className={`w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition ${
+            className={`w-full py-3 bg-black hover:bg-gray-800 text-white font-semibold rounded-lg transition ${
               isLoading ? "opacity-60 cursor-not-allowed" : ""
             }`}
           >
             {isLoading ? "Signing up..." : "Sign Up"}
           </button>
         </form>
-        <p className="mt-6 text-center text-gray-500 dark:text-gray-400">
+        <p className="mt-6 text-center text-gray-700 dark:text-gray-400">
           Already have an account?{" "}
           <button
-            className="text-blue-600 hover:underline dark:text-blue-500 font-semibold focus:outline-none"
+            className="text-black hover:underline dark:text-gray-200 font-semibold focus:outline-none"
             onClick={onSwitchToLogin}
             type="button"
           >

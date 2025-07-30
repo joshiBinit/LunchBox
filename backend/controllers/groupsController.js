@@ -1,5 +1,6 @@
 const Group = require("../models/Group");
 const Expense = require("../models/Expense");
+const User = require("../models/User");
 
 // Get all groups
 const getGroups = async (req, res) => {
@@ -21,20 +22,24 @@ const addMemberToGroup = async (req, res) => {
       return res.status(400).json({ message: "Username is required" });
     }
 
+    // Check if user exists in User collection
+    const userExists = await User.exists({ username: username.trim() });
+    if (!userExists) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     const group = await Group.findById(groupId);
     if (!group) {
       return res.status(404).json({ message: "Group not found" });
     }
 
-    // Check if member already exists (case-sensitive)
-    if (group.members.includes(username)) {
+    if (group.members.includes(username.trim())) {
       return res
         .status(409)
         .json({ message: "Member already exists in group" });
     }
 
-    // Add member to group's members array
-    group.members.push(username);
+    group.members.push(username.trim());
     await group.save();
 
     res.status(200).json({ message: "Member added successfully", group });
