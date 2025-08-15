@@ -23,9 +23,20 @@ export const login = async (username: string, password: string) => {
     headers: getHeaders(),
     body: JSON.stringify({ usernameOrEmail: username, password }),
   });
-  if (!res.ok) throw new Error("Login failed");
 
-  return res.json(); // { token, user }
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+
+  if (!res.ok) {
+    const errorMessage = data?.message || "Login failed";
+    throw new Error(errorMessage);
+  }
+
+  return data; // { token, user }
 };
 
 export const signup = async (
@@ -38,39 +49,81 @@ export const signup = async (
     headers: getHeaders(),
     body: JSON.stringify({ username, email, password }),
   });
-  if (!res.ok) {
-    const message = await res.text();
-    throw new Error(message || "Signup failed");
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
   }
-  return res.json();
+
+  if (!res.ok) {
+    // If response is plain text (non-JSON), use text instead
+    const errorMessage =
+      (data && data.message) || (await res.text()) || "Signup failed";
+    throw new Error(errorMessage);
+  }
+
+  return data;
 };
 
 export const fetchGroupById = async (groupId: string) => {
   const res = await fetch(`${API_BASE}/api/groups/${groupId}`, {
     headers: getHeaders(),
   });
-  if (!res.ok) throw new Error("Failed to fetch group");
-  return res.json(); // returns Group with expenses array
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+
+  if (!res.ok) {
+    const errorMessage = data?.message || "Failed to fetch group";
+    throw new Error(errorMessage);
+  }
+  return data; // returns Group with expenses array
 };
 
 export const fetchGroups = async () => {
   const res = await fetch(`${API_BASE}/api/groups`, {
     headers: getHeaders(),
   });
-  if (!res.ok) throw new Error("Failed to fetch groups");
-  return res.json();
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+
+  if (!res.ok) {
+    const errorMessage = data?.message || "Failed to fetch groups";
+    throw new Error(errorMessage);
+  }
+  return data;
 };
+
 export const apiAddExpense = async (groupId: string, expenseData: any) => {
   const res = await fetch(`${API_BASE}/groups/${groupId}/expenses`, {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify(expenseData),
   });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.message || "Failed to add expense");
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
   }
-  return res.json();
+
+  if (!res.ok) {
+    const errorMessage = data?.message || "Failed to add expense";
+    throw new Error(errorMessage);
+  }
+  return data;
 };
 
 export const createGroup = async (name: string, admin: string) => {
@@ -79,8 +132,19 @@ export const createGroup = async (name: string, admin: string) => {
     headers: getHeaders(),
     body: JSON.stringify({ name, admin }),
   });
-  if (!res.ok) throw new Error("Failed to create group");
-  return res.json();
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+
+  if (!res.ok) {
+    const errorMessage = data?.message || "Failed to create group";
+    throw new Error(errorMessage);
+  }
+  return data;
 };
 
 export const deleteGroup = async (groupId: string) => {
@@ -88,8 +152,19 @@ export const deleteGroup = async (groupId: string) => {
     method: "DELETE",
     headers: getHeaders(),
   });
-  if (!res.ok) throw new Error("Failed to delete group");
-  return res.json();
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+
+  if (!res.ok) {
+    const errorMessage = data?.message || "Failed to delete group";
+    throw new Error(errorMessage);
+  }
+  return data;
 };
 
 export const addMember = async (groupId: string, username: string) => {
@@ -98,9 +173,22 @@ export const addMember = async (groupId: string, username: string) => {
     headers: getHeaders(),
     body: JSON.stringify({ username }),
   });
-  if (!res.ok) throw new Error("Failed to add member");
-  return res.json();
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+
+  if (!res.ok) {
+    const errorMessage = data?.message || "Failed to add member";
+    throw new Error(errorMessage);
+  }
+
+  return data;
 };
+
 export const apiEditExpense = async (
   groupId: string,
   expenseId: string,
@@ -114,11 +202,19 @@ export const apiEditExpense = async (
       body: JSON.stringify(expenseData),
     }
   );
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.message || "Failed to update expense");
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
   }
-  return res.json();
+
+  if (!res.ok) {
+    const errorMessage = data?.message || "Failed to update expense";
+    throw new Error(errorMessage);
+  }
+  return data;
 };
 
 export const addExpense = async (groupId: string, expenseData: any) => {
@@ -127,8 +223,19 @@ export const addExpense = async (groupId: string, expenseData: any) => {
     headers: getHeaders(),
     body: JSON.stringify(expenseData),
   });
-  if (!res.ok) throw new Error("Failed to add expense");
-  return res.json();
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+
+  if (!res.ok) {
+    const errorMessage = data?.message || "Failed to add expense";
+    throw new Error(errorMessage);
+  }
+  return data;
 };
 
 export const editExpense = async (
@@ -144,6 +251,17 @@ export const editExpense = async (
       body: JSON.stringify(expenseData),
     }
   );
-  if (!res.ok) throw new Error("Failed to edit expense");
-  return res.json();
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+
+  if (!res.ok) {
+    const errorMessage = data?.message || "Failed to edit expense";
+    throw new Error(errorMessage);
+  }
+  return data;
 };

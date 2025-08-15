@@ -34,9 +34,24 @@ export const GroupView: React.FC<GroupViewProps> = ({
   );
   const [isAddingMember, setIsAddingMember] = useState(false);
 
+  // Date filter states
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+
   const sortedExpenses = [...(group.expenses ?? [])].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
+
+  // Filter expenses by selected date range
+  const filteredExpenses = sortedExpenses.filter((exp) => {
+    const expenseDate = new Date(exp.date).setHours(0, 0, 0, 0);
+    const start = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : null;
+    const end = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : null;
+
+    if (start !== null && expenseDate < start) return false;
+    if (end !== null && expenseDate > end) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -66,6 +81,47 @@ export const GroupView: React.FC<GroupViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Date Filter UI */}
+      <Card>
+        <h2 className="text-lg font-semibold text-black mb-2">
+          Filter by Date
+        </h2>
+        <div className="flex space-x-4 items-center">
+          <label className="flex flex-col text-black font-medium text-sm">
+            Start Date
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="mt-1 p-1 border border-gray-300 rounded"
+              max={endDate || undefined}
+            />
+          </label>
+          <label className="flex flex-col text-black font-medium text-sm">
+            End Date
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="mt-1 p-1 border border-gray-300 rounded"
+              min={startDate || undefined}
+            />
+          </label>
+          {(startDate || endDate) && (
+            <button
+              type="button"
+              onClick={() => {
+                setStartDate("");
+                setEndDate("");
+              }}
+              className="ml-4 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
@@ -136,8 +192,8 @@ export const GroupView: React.FC<GroupViewProps> = ({
           <Card>
             <h2 className="text-xl font-bold mb-4 text-black">Expense Log</h2>
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-              {sortedExpenses.length > 0 ? (
-                sortedExpenses.map((exp) => {
+              {filteredExpenses.length > 0 ? (
+                filteredExpenses.map((exp) => {
                   const allSharers = Array.from(
                     new Set(
                       (exp.items ?? [])

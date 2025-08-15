@@ -61,6 +61,7 @@ const CreateGroupModal: React.FC<{
                 onChange={(e) => setGroupName(e.target.value)}
                 placeholder="e.g., 'Weekend Trip' or 'Dinner Club'"
                 className="w-full p-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all duration-200"
+                autoFocus
               />
             </div>
             <button
@@ -79,7 +80,6 @@ const CreateGroupModal: React.FC<{
 };
 
 export default function App() {
-  // Auth and UI state
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem("user");
     return saved ? JSON.parse(saved) : null;
@@ -125,10 +125,8 @@ export default function App() {
     try {
       if (!user) throw new Error("User not logged in");
 
-      // 1) Fetch basic group list
       const groupsSummary = await fetchGroups();
 
-      // 2) Fetch full group details including expenses
       const groupsWithDetails: Group[] = await Promise.all(
         groupsSummary.map(async (g: { _id: string }) => {
           const fullGroup = await fetchGroupById(g._id);
@@ -136,7 +134,6 @@ export default function App() {
         })
       );
 
-      // 3) Filter groups where current user is a member
       const filteredGroups = groupsWithDetails.filter((group) =>
         group.members.some((member) =>
           typeof member === "string"
@@ -145,18 +142,18 @@ export default function App() {
         )
       );
 
-      // 4) Calculate balances only on filtered groups
       const { processedGroups } = calculateAllBalances(
         filteredGroups,
         user.username
       );
 
-      // 5) Update state with filtered and processed groups
       setGroups(processedGroups);
       setActiveGroup(null);
       setView("dashboard");
     } catch (err) {
-      setError((err as Error).message || "Failed to load groups");
+      const errorMsg = (err as Error).message || "Failed to load groups";
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoadingGroups(false);
     }
@@ -177,7 +174,9 @@ export default function App() {
       setActiveGroup(processedGroups[0]);
       setView("group");
     } catch (err) {
-      setError((err as Error).message || "Failed to load group");
+      const errorMsg = (err as Error).message || "Failed to load group";
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoadingGroups(false);
     }
@@ -189,8 +188,11 @@ export default function App() {
     try {
       const data = await apiLogin(username, password);
       setUser({ username: data.user.username, token: data.token });
+      toast.success("Logged in successfully");
     } catch (err) {
-      setError((err as Error).message || "Login failed");
+      const errorMsg = (err as Error).message || "Login failed";
+      setError(errorMsg);
+      toast.error(errorMsg);
       throw err;
     }
   };
@@ -205,8 +207,11 @@ export default function App() {
     try {
       await apiSignup(username, email, password);
       setShowSignUp(false);
+      toast.success("Signup successful! Please login.");
     } catch (err) {
-      setError((err as Error).message || "Signup failed");
+      const errorMsg = (err as Error).message || "Signup failed";
+      setError(errorMsg);
+      toast.error(errorMsg);
       throw err;
     }
   };
@@ -215,6 +220,7 @@ export default function App() {
   const handleLogout = () => {
     setUser(null);
     setError(null);
+    toast.info("Logged out");
   };
 
   // Handle group selection
@@ -229,8 +235,11 @@ export default function App() {
       const newGroup = await apiCreateGroup(groupName, user.username);
       setGroups([newGroup, ...groups]);
       setIsCreatingGroup(false);
+      toast.success(`Group "${groupName}" created successfully`);
     } catch (err) {
-      setError((err as Error).message || "Failed to create group");
+      const errorMsg = (err as Error).message || "Failed to create group";
+      setError(errorMsg);
+      toast.error(errorMsg);
     }
   };
 
@@ -253,10 +262,9 @@ export default function App() {
         (m: UserRef) => (typeof m === "string" ? m : m.username) === memberName
       )
     ) {
-      setError("Member already exists in the group");
+      toast.error("Member already exists in the group");
       return;
     }
-
     try {
       await apiAddMember(activeGroup._id!, memberName);
 
@@ -279,15 +287,16 @@ export default function App() {
       setActiveGroup(processedGroup);
 
       setError(null);
+      toast.success(`Member "${memberName}" added successfully`);
     } catch (err: any) {
       if (err.message) {
         if (err.message === "User not found") {
           toast.error("User not found");
         } else {
-          setError(err.message);
+          toast.error(err.message);
         }
       } else {
-        toast.error("Failed to add member");
+        toast.error("User not found");
       }
     }
   };
@@ -302,8 +311,11 @@ export default function App() {
         setView("dashboard");
       }
       setError(null);
+      toast.success(`Group "${group.name}" deleted`);
     } catch (err) {
-      setError((err as Error).message || "Failed to delete group");
+      const errorMsg = (err as Error).message || "Failed to delete group";
+      setError(errorMsg);
+      toast.error(errorMsg);
     }
   };
 
@@ -315,20 +327,29 @@ export default function App() {
       const groupId = expenseModalState.group._id!;
       let updatedExpense: Expense;
 
+      // Remove _id from items so backend can generate proper ObjectIds
+      const cleanedExpenseData = {
+        ...expenseData,
+        items: expenseData.items.map(({ _id, ...rest }) => rest),
+      };
+
       if (expenseModalState.expenseToEdit) {
         const expenseId = expenseModalState.expenseToEdit._id!;
-        updatedExpense = await apiEditExpense(groupId, expenseId, expenseData);
+        updatedExpense = await apiEditExpense(
+          groupId,
+          expenseId,
+          cleanedExpenseData
+        );
+        toast.success("Expense updated successfully");
       } else {
-        updatedExpense = await apiAddExpense(groupId, expenseData);
+        updatedExpense = await apiAddExpense(groupId, cleanedExpenseData);
+        toast.success("Expense added successfully");
       }
 
       const updatedGroup = { ...expenseModalState.group };
       updatedGroup.expenses = updatedGroup.expenses || [];
 
-      if (!updatedExpense._id) {
-        updatedExpense._id = `temp-id-${Date.now()}`;
-      }
-
+      // Insert or update expense in local state
       const idx = updatedGroup.expenses.findIndex(
         (e) => e._id === updatedExpense._id
       );
@@ -338,6 +359,7 @@ export default function App() {
         updatedGroup.expenses = [updatedExpense, ...updatedGroup.expenses];
       }
 
+      // Recalculate balances
       const { processedGroups } = calculateAllBalances(
         [updatedGroup],
         user.username
@@ -349,7 +371,9 @@ export default function App() {
       setExpenseModalState({ isOpen: false, group: null, expenseToEdit: null });
       setError(null);
     } catch (err) {
-      setError((err as Error).message || "Failed to submit expense");
+      const errorMsg = (err as Error).message || "Failed to submit expense";
+      setError(errorMsg);
+      toast.error(errorMsg);
     }
   };
 
@@ -475,7 +499,7 @@ export default function App() {
           </div>
         </header>
 
-        {/* Error display */}
+        {/* Error display box */}
         {error && (
           <div className="fixed top-20 right-4 z-50 animate-in slide-in-from-right duration-300">
             <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl shadow-lg max-w-sm flex items-start space-x-3">

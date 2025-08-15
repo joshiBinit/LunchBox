@@ -1,35 +1,37 @@
 import React, { useState } from "react";
+import { toast } from "react-toastify";
 
 interface LoginPageProps {
   onLogin: (username: string, password: string) => Promise<void>;
-  errorMessage?: string;
+  errorMessage?: string; // This you can remove if you want solely toast
   onSwitchToSignUp: () => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({
   onLogin,
-  errorMessage,
+
   onSwitchToSignUp,
 }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLocalError(null);
 
     if (!username.trim() || !password.trim()) {
-      setLocalError("Please enter both username and password.");
+      toast.error("Please enter both username and password.");
       return;
     }
 
     setIsLoading(true);
     try {
       await onLogin(username.trim(), password.trim());
+      // Optionally show success toast after login if you want:
+      // toast.success("Logged in successfully!");
     } catch (err) {
-      setLocalError((err as Error).message || "Login failed");
+      const message = (err as Error).message || "Login failed";
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -59,11 +61,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             className="w-full p-3 rounded-lg border border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 transition"
             disabled={isLoading}
           />
-          {(localError || errorMessage) && (
-            <div className="text-red-600 text-sm font-semibold">
-              {localError || errorMessage}
-            </div>
-          )}
+          {/* Removed inline error display since using toast now */}
           <button
             type="submit"
             disabled={isLoading}

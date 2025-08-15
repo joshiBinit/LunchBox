@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Card } from "./Card";
 import { Plus, Trash2, X } from "lucide-react";
 import type { Group, Expense, ExpenseItem, UserRef } from "../types";
+import { toast } from "react-toastify";
 
 interface AddExpenseModalProps {
   group: Group;
@@ -124,29 +125,24 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     const validItems = items.filter(
       (i) => i.name.trim().length > 0 && i.cost > 0 && i.sharedBy.length > 0
     );
-    if (validItems.length === 0) {
+
+    // Allow submitting empty items array if editing existing expense (deleting all items)
+    if (!expenseToEdit && validItems.length === 0) {
+      toast.error("Please add at least one valid item before saving");
       return;
     }
+
     onExpenseSubmit({
       _id: expenseToEdit ? expenseToEdit._id : undefined,
       date,
       restaurant,
       payer,
-      items: validItems.map((i) => {
-        const itemPayload: any = {
-          name: i.name.trim(),
-          cost: i.cost,
-          sharedBy: i.sharedBy,
-        };
-        if (expenseToEdit && i._id && /^[a-f\d]{24}$/i.test(i._id)) {
-          itemPayload._id = i._id;
-        }
-        return itemPayload;
-      }),
-      totalCost: totalBill,
+      items: validItems,
+      totalCost: validItems.reduce((sum, i) => sum + i.cost, 0),
     });
   };
 
@@ -230,11 +226,11 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                     />
                     <input
                       type="number"
-                      value={item.cost}
+                      value={item.cost || ""}
                       onChange={(e) =>
                         handleItemChange(item._id, "cost", e.target.value)
                       }
-                      placeholder="0.00"
+                      placeholder="Rs 0"
                       className="w-32 px-3 py-2 rounded border border-gray-400 bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 transition"
                       min={0}
                       step={0.01}
