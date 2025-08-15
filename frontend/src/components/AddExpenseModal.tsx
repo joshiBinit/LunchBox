@@ -150,43 +150,46 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
-      <Card className="w-full max-w-6xl h-[90vh] flex flex-col bg-white">
-        <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-300">
-          <h2 className="text-2xl font-bold text-black">
+      <Card className="w-full max-w-6xl h-[90vh] flex flex-col bg-white rounded-xl shadow-2xl">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-5 pb-4 border-b border-gray-300">
+          <h2 className="text-3xl font-extrabold text-gray-900 select-none">
             {expenseToEdit ? "Edit Expense" : "Log New Lunch Expense"}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-gray-200 transition-colors"
+            className="p-2 rounded-full hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-400"
             aria-label="Close modal"
             type="button"
           >
-            <X className="text-black" />
+            <X className="text-gray-800 w-6 h-6" />
           </button>
         </div>
+
         <form
           onSubmit={handleSubmit}
           className="flex-grow flex flex-col overflow-hidden"
         >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          {/* Top Inputs */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
             <input
               type="text"
               value={restaurant}
               onChange={(e) => setRestaurant(e.target.value)}
               placeholder="Restaurant Name (optional)"
-              className="w-full px-3 py-2 rounded border border-gray-400 bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 transition"
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
             />
             <input
               type="date"
               id="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full px-3 py-2 rounded border border-gray-400 bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 transition"
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
             />
             <select
               value={payer}
               onChange={(e) => setPayer(e.target.value)}
-              className="w-full px-3 py-2 rounded border border-gray-400 bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 transition"
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
             >
               <option value="" disabled>
                 Bill Paid By...
@@ -202,17 +205,19 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             </select>
           </div>
 
-          <div className="flex-grow grid grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden">
-            <div className="md:col-span-2 flex flex-col overflow-hidden">
-              <div className="flex-grow overflow-y-auto pr-2 -mr-2 space-y-2">
+          {/* Main Content */}
+          <div className="flex-grow grid grid-cols-1 md:grid-cols-3 gap-8 overflow-hidden">
+            {/* Left: Items */}
+            <div className="md:col-span-2 flex flex-col overflow-hidden border border-gray-200 rounded-lg bg-gray-50 p-4 shadow-inner">
+              <div className="flex-grow overflow-y-auto pr-4 space-y-3">
                 {items.map((item) => (
                   <div
                     key={item._id}
                     onFocus={() => setActiveItemId(item._id)}
-                    className={`p-3 rounded-lg flex items-center space-x-2 transition-all ${
+                    className={`p-3 rounded-lg flex items-center space-x-3 cursor-text transition-all duration-300 ${
                       activeItemId === item._id
-                        ? "bg-gray-100 ring-2 ring-black"
-                        : "bg-gray-50"
+                        ? "bg-white ring-2 ring-indigo-500 shadow-md"
+                        : "bg-gray-100"
                     }`}
                   >
                     <input
@@ -222,7 +227,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                         handleItemChange(item._id, "name", e.target.value)
                       }
                       placeholder="e.g., 'Chicken Biryani'"
-                      className="flex-grow px-3 py-2 rounded border border-gray-400 bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 transition"
+                      className="flex-grow px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
                     />
                     <input
                       type="number"
@@ -231,36 +236,38 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                         handleItemChange(item._id, "cost", e.target.value)
                       }
                       placeholder="Rs 0"
-                      className="w-32 px-3 py-2 rounded border border-gray-400 bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 transition"
+                      className="w-36 px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow appearance-none"
                       min={0}
                       step={0.01}
                     />
                     <button
                       type="button"
                       onClick={() => removeItemRow(item._id)}
-                      className="flex-shrink-0 p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors"
+                      className="flex-shrink-0 p-2 text-red-600 hover:bg-red-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-red-400"
                       aria-label="Remove item"
                     >
-                      <Trash2 />
+                      <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
                 ))}
               </div>
+
               <button
                 type="button"
                 onClick={addItemRow}
-                className="mt-4 w-full border-2 border-dashed border-gray-400 text-black hover:bg-gray-100 font-semibold py-2 px-4 rounded-lg flex items-center justify-center space-x-2 transition-colors"
+                className="mt-5 w-full border-2 border-dashed border-gray-400 text-gray-900 hover:bg-gray-200 font-semibold py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <Plus className="w-5 h-5" />
                 <span>Add Item</span>
               </button>
             </div>
 
-            <div className="flex flex-col overflow-hidden bg-gray-50 p-3 rounded-lg border border-gray-300">
-              <h4 className="font-semibold text-center mb-2 text-black">
+            {/* Right: Share With */}
+            <div className="flex flex-col rounded-lg bg-gray-50 p-6 border border-gray-300 shadow-inner">
+              <h4 className="font-semibold text-center mb-4 text-gray-900 select-none">
                 Share with:
               </h4>
-              <div className="flex-grow overflow-y-auto space-y-2">
+              <div className="flex-grow overflow-y-auto space-y-3">
                 {group.members.map((member) => {
                   const memberName =
                     typeof member === "string" ? member : getUsername(member);
@@ -271,15 +278,15 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                       type="button"
                       disabled={!activeItem}
                       onClick={() => handleShareToggle(memberName)}
-                      className={`w-full text-left p-2 rounded-lg font-medium transition-all duration-200 ease-in-out ${
+                      className={`w-full text-left p-3 rounded-lg font-semibold transition-colors duration-200 ease-in-out select-none ${
                         isSelected
-                          ? "bg-black text-white"
-                          : "bg-gray-200 text-black hover:bg-gray-300"
+                          ? "bg-indigo-600 text-white shadow-md"
+                          : "bg-gray-200 text-gray-900 hover:bg-gray-300"
                       } ${
                         !activeItem
                           ? "opacity-50 cursor-not-allowed"
                           : "cursor-pointer"
-                      }`}
+                      } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
                     >
                       {memberName}
                     </button>
@@ -289,24 +296,29 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             </div>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-gray-300">
-            <h3 className="text-lg font-bold mb-2 text-black">Summary</h3>
-            <div className="flex justify-between items-center bg-gray-100 p-3 rounded-lg">
-              <span className="font-bold text-xl text-black">Total Bill:</span>
-              <span className="font-bold text-2xl text-gray-700">
+          {/* Summary */}
+          <div className="mt-6 pt-6 border-t border-gray-300 select-none">
+            <h3 className="text-xl font-bold mb-4 text-gray-900">Summary</h3>
+            <div className="flex justify-between items-center bg-gray-100 p-4 rounded-lg shadow-inner">
+              <span className="font-bold text-xl text-gray-900">
+                Total Bill:
+              </span>
+              <span className="font-bold text-3xl text-indigo-700">
                 Rs. {totalBill.toFixed(2)}
               </span>
             </div>
-            <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {Object.entries(billSplit).map(
                 ([name, amount]) =>
                   amount > 0 && (
                     <div
                       key={name}
-                      className="flex justify-between text-sm bg-gray-50 p-2 rounded"
+                      className="flex justify-between text-sm bg-white p-3 rounded shadow-sm border border-gray-200"
                     >
-                      <span className="text-black">{name}:</span>
-                      <span className="font-medium text-gray-700">
+                      <span className="text-gray-900 font-medium truncate">
+                        {name}:
+                      </span>
+                      <span className="font-semibold text-indigo-600">
                         Rs. {amount.toFixed(2)}
                       </span>
                     </div>
@@ -315,10 +327,11 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             </div>
           </div>
 
-          <div className="mt-auto pt-4">
+          {/* Submit Button */}
+          <div className="mt-auto pt-6">
             <button
               type="submit"
-              className="w-full bg-black hover:bg-gray-800 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2 shadow-md"
+              className="w-full bg-indigo-700 hover:bg-indigo-800 text-white font-extrabold py-4 rounded-lg flex items-center justify-center space-x-3 shadow-lg transition-colors focus:outline-none focus:ring-4 focus:ring-indigo-400"
             >
               <span>{expenseToEdit ? "Save Changes" : "Add Expense Log"}</span>
             </button>

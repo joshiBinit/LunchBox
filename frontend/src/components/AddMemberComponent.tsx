@@ -18,20 +18,21 @@ export const AddMemberComponent: React.FC<AddMemberComponentProps> = ({
   };
 
   return (
-    <div className="mt-4 flex space-x-2">
+    <div className="mt-4 flex gap-1">
       <input
         type="text"
         value={newMemberName}
         onChange={(e) => setNewMemberName(e.target.value)}
         placeholder="New member's name"
-        className="flex-grow px-3 py-2 rounded border border-gray-400 bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 transition"
+        className="flex-grow px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition"
       />
       <button
         onClick={handleAdd}
-        className="bg-black hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center space-x-2 shadow-md"
+        className="bg-indigo-700 hover:bg-indigo-800 text-white font-semibold py-3 px-3 rounded-lg flex items-center  shadow-lg transition-colors focus:outline-none focus:ring-4 focus:ring-indigo-400"
         type="button"
+        aria-label="Add new member"
       >
-        <Plus className="w-5 h-5" />
+        <Plus className="w-4 h-5" />
         <span>Add</span>
       </button>
     </div>
