@@ -183,10 +183,22 @@ export default function App() {
   };
 
   // Login handler
-  const handleLogin = async (username: string, password: string) => {
+  const handleLogin = async (
+    username: string,
+    password: string,
+    rememberMe: boolean
+  ) => {
     setError(null);
     try {
       const data = await apiLogin(username, password);
+      // Store the token based on rememberMe flag
+      if (data.token) {
+        if (rememberMe) {
+          localStorage.setItem("token", data.token);
+        } else {
+          sessionStorage.setItem("token", data.token);
+        }
+      }
       setUser({ username: data.user.username, token: data.token });
       toast.success("Logged in successfully");
     } catch (err) {
@@ -218,6 +230,8 @@ export default function App() {
 
   // Logout handler
   const handleLogout = () => {
+    localStorage.removeItem("token");
+    sessionStorage.removeItem("token");
     setUser(null);
     setError(null);
     toast.info("Logged out");
