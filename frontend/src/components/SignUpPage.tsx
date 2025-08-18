@@ -12,7 +12,7 @@ interface SignUpPageProps {
 
 export const SignUpPage: React.FC<SignUpPageProps> = ({
   onSignUp,
-  errorMessage,
+
   onSwitchToLogin,
 }) => {
   const [username, setUsername] = useState("");
